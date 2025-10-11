@@ -26,6 +26,13 @@ def load_documents() -> List[str]:
     # HINT: Your implementation depends on the type of documents you are using (.txt, .pdf, etc.)
 
     # Your implementation here
+    data_dir = os.path.join(os.path.dirname(__file__), "../data")
+    for filename in os.listdir(data_dir):
+        if filename.endswith(".txt"):
+            with open(os.path.join(data_dir, filename), "r", encoding="utf-8") as f:
+                text = f.read().strip()
+                if text:
+                    results.append(text)
     return results
 
 
@@ -49,11 +56,18 @@ class RAGAssistant:
         self.vector_db = VectorDB()
 
         # Create RAG prompt template
+        self.prompt_template = ChatPromptTemplate.from_template(
+            "You are a helpful assistant. Use the following context to answer the question.\n\n"
+            "Context:\n{context}\n\n"
+            "Question: {question}\n"
+            "Answer:"
+        )
+
         # TODO: Implement your RAG prompt template
         # HINT: Use ChatPromptTemplate.from_template() with a template string
         # HINT: Your template should include placeholders for {context} and {question}
         # HINT: Design your prompt to effectively use retrieved context to answer questions
-        self.prompt_template = None  # Your implementation here
+          # Your implementation here
 
         # Create the chain
         self.chain = self.prompt_template | self.llm | StrOutputParser()
@@ -122,6 +136,10 @@ class RAGAssistant:
         # HINT: Return a string answer from the LLM
 
         # Your implementation here
+        context_chunks = self.vector_db.search(input, n_results)
+        context = "\n\n".join(context_chunks)
+        # Generate answer using the chain
+        llm_answer = self.chain.invoke({"context": context, "question": input})
         return llm_answer
 
 
@@ -146,7 +164,7 @@ def main():
             if question.lower() == "quit":
                 done = True
             else:
-                result = assistant.query(question)
+                result = assistant.invoke(question)
                 print(result)
 
     except Exception as e:

@@ -68,8 +68,21 @@ class VectorDB:
         #
         # Feel free to try different approaches and see what works best!
 
+        
+        words = text.split()
         chunks = []
-        # Your implementation here
+        current_chunk = []
+        current_length = 0
+
+        for word in words:
+            current_chunk.append(word)
+            current_length += len(word) + 1  # +1 for space
+            if current_length >= chunk_size:
+                chunks.append(' '.join(current_chunk))
+                current_chunk = []
+                current_length = 0
+        if current_chunk:
+            chunks.append(' '.join(current_chunk))
 
         return chunks
 
@@ -90,8 +103,32 @@ class VectorDB:
         # HINT: Print progress messages to inform the user
 
         print(f"Processing {len(documents)} documents...")
-        # Your implementation here
-        print("Documents added to vector database")
+        all_chunks = []
+        all_metadatas = []
+        all_ids = []
+        doc_counter = 0
+        chunk_counter = 0
+
+        for doc_idx, doc in enumerate(documents):
+            chunks = self.chunk_text(doc)
+            for chunk_idx, chunk in enumerate(chunks):
+                all_chunks.append(chunk)
+                all_metadatas.append({"doc_index": doc_idx, "chunk_index": chunk_idx})
+                all_ids.append(f"doc_{doc_idx}_chunk_{chunk_idx}")
+                chunk_counter += 1
+            doc_counter += 1
+
+        # Compute embeddings for all chunks
+        embeddings = self.embedding_model.encode(all_chunks, show_progress_bar=True)
+
+        # Add to ChromaDB
+        self.collection.add(
+            embeddings=embeddings,
+            documents=all_chunks,
+            metadatas=all_metadatas,
+            ids=all_ids,
+        )
+        print(f"Added {chunk_counter} chunks from {doc_counter} documents to vector database")
 
     def search(self, query: str, n_results: int = 5) -> Dict[str, Any]:
         """
@@ -104,17 +141,24 @@ class VectorDB:
         Returns:
             Dictionary containing search results with keys: 'documents', 'metadatas', 'distances', 'ids'
         """
-        # TODO: Implement similarity search logic
-        # HINT: Use self.embedding_model.encode([query]) to create query embedding
-        # HINT: Convert the embedding to appropriate format for your vector database
-        # HINT: Use your vector database's search/query method with the query embedding and n_results
-        # HINT: Return a dictionary with keys: 'documents', 'metadatas', 'distances', 'ids'
-        # HINT: Handle the case where results might be empty
-
-        # Your implementation here
+        query_embedding = self.embedding_model.encode([query])[0]
+        # Query ChromaDB
+        results = self.collection.query(
+            query_embeddings=[query_embedding],
+            n_results=n_results,
+            include=["documents", "metadatas", "distances"]
+        )
+        # Handle empty results
+        if not results or not results.get("documents"):
+            return {
+                "documents": [],
+                "metadatas": [],
+                "distances": [],
+                "ids": [],
+            }
         return {
-            "documents": [],
-            "metadatas": [],
-            "distances": [],
-            "ids": [],
-        }
+    "documents": results.get("documents", [[]])[0],
+    "metadatas": results.get("metadatas", [[]])[0],
+    "distances": results.get("distances", [[]])[0],
+    "ids": results.get("ids", [[]])[0] if "ids" in results else [],
+}
