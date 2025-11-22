@@ -20,12 +20,7 @@ def load_documents() -> List[str]:
         List of sample documents
     """
     results = []
-    # TODO: Implement document loading
-    # HINT: Read the documents from the data directory
-    # HINT: Return a list of documents
-    # HINT: Your implementation depends on the type of documents you are using (.txt, .pdf, etc.)
-
-    # Your implementation here
+  
     data_dir = os.path.join(os.path.dirname(__file__), "../data")
     for filename in os.listdir(data_dir):
         if filename.endswith(".txt"):
@@ -63,11 +58,7 @@ class RAGAssistant:
             "Answer:"
         )
 
-        # TODO: Implement your RAG prompt template
-        # HINT: Use ChatPromptTemplate.from_template() with a template string
-        # HINT: Your template should include placeholders for {context} and {question}
-        # HINT: Design your prompt to effectively use retrieved context to answer questions
-          # Your implementation here
+    
 
         # Create the chain
         self.chain = self.prompt_template | self.llm | StrOutputParser()
@@ -129,13 +120,7 @@ class RAGAssistant:
             Dictionary containing the answer and retrieved context
         """
         llm_answer = ""
-        # TODO: Implement the RAG query pipeline
-        # HINT: Use self.vector_db.search() to retrieve relevant context chunks
-        # HINT: Combine the retrieved document chunks into a single context string
-        # HINT: Use self.chain.invoke() with context and question to generate the response
-        # HINT: Return a string answer from the LLM
-
-        # Your implementation here
+        
         context_chunks = self.vector_db.search(input, n_results)
         context = "\n\n".join(context_chunks)
         # Generate answer using the chain
