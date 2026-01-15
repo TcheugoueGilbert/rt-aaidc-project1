@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import List
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,6 +11,11 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Load environment variables
 load_dotenv()
+
+# module logger
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
 
 
 def load_documents() -> List[str]:
@@ -55,24 +61,26 @@ class RAGAssistant:
         # Initialize vector database
         self.vector_db = VectorDB()
 
+
+        # Focus the assistant's role/scope — change this to suit your target use-case
+        scope_description = os.getenv(
+            "RAG_SCOPE",
+            "You are a research assistant specialized in scientific and technical literature. Answer concisely, cite sources, and prefer exact excerpts from the provided context when possible.",
+        )
+
         # Create RAG prompt template
         self.prompt_template = ChatPromptTemplate.from_template(
-            "You are a helpful assistant. Use the following context to answer the question.\n\n"
+            f"System: {scope_description}\n\n"
+            "Use only the provided context to answer the question. If the answer is not contained in the context, say you don't know.\n\n"
             "Context:\n{context}\n\n"
             "Question: {question}\n"
             "Answer:"
         )
 
-        # TODO: Implement your RAG prompt template
-        # HINT: Use ChatPromptTemplate.from_template() with a template string
-        # HINT: Your template should include placeholders for {context} and {question}
-        # HINT: Design your prompt to effectively use retrieved context to answer questions
-          # Your implementation here
-
         # Create the chain
         self.chain = self.prompt_template | self.llm | StrOutputParser()
 
-        print("RAG Assistant initialized successfully")
+        logger.info("RAG Assistant initialized successfully")
 
     def _initialize_llm(self):
         """
@@ -82,21 +90,21 @@ class RAGAssistant:
         # Check for OpenAI API key
         if os.getenv("OPENAI_API_KEY"):
             model_name = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-            print(f"Using OpenAI model: {model_name}")
+            logger.info("Using OpenAI model: %s", model_name)
             return ChatOpenAI(
                 api_key=os.getenv("OPENAI_API_KEY"), model=model_name, temperature=0.0
             )
 
         elif os.getenv("GROQ_API_KEY"):
             model_name = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
-            print(f"Using Groq model: {model_name}")
+            logger.info("Using Groq model: %s", model_name)
             return ChatGroq(
                 api_key=os.getenv("GROQ_API_KEY"), model=model_name, temperature=0.0
             )
 
         elif os.getenv("GOOGLE_API_KEY"):
             model_name = os.getenv("GOOGLE_MODEL", "gemini-2.0-flash")
-            print(f"Using Google Gemini model: {model_name}")
+            logger.info("Using Google Gemini model: %s", model_name)
             return ChatGoogleGenerativeAI(
                 google_api_key=os.getenv("GOOGLE_API_KEY"),
                 model=model_name,
@@ -128,16 +136,24 @@ class RAGAssistant:
         Returns:
             Dictionary containing the answer and retrieved context
         """
-        llm_answer = ""
-        # TODO: Implement the RAG query pipeline
-        # HINT: Use self.vector_db.search() to retrieve relevant context chunks
-        # HINT: Combine the retrieved document chunks into a single context string
-        # HINT: Use self.chain.invoke() with context and question to generate the response
-        # HINT: Return a string answer from the LLM
+        # Retrieve candidates from the vector DB
+        results = self.vector_db.search(input, n_results)
+        docs = results.get("documents", [])
+        metas = results.get("metadatas", [])
+        dists = results.get("distances", [])
+        ids = results.get("ids", [])
 
-        # Your implementation here
-        context_chunks = self.vector_db.search(input, n_results)
-        context = "\n\n".join(context_chunks)
+        # Build a concise context that includes provenance for each chunk
+        context_parts = []
+        for i, doc in enumerate(docs):
+            meta = metas[i] if i < len(metas) else {}
+            dist = dists[i] if i < len(dists) else None
+            _id = ids[i] if i < len(ids) else None
+            provenance = f"[source: doc={meta.get('doc_index', '?')}, chunk={meta.get('chunk_index', '?')}, id={_id}, dist={dist}]"
+            context_parts.append(f"{provenance}\n{doc}")
+
+        context = "\n\n".join(context_parts)
+
         # Generate answer using the chain
         llm_answer = self.chain.invoke({"context": context, "question": input})
         return llm_answer
@@ -147,13 +163,13 @@ def main():
     """Main function to demonstrate the RAG assistant."""
     try:
         # Initialize the RAG assistant
-        print("Initializing RAG Assistant...")
+        logger.info("Initializing RAG Assistant...")
         assistant = RAGAssistant()
 
         # Load sample documents
-        print("\nLoading documents...")
+        logger.info("Loading documents...")
         sample_docs = load_documents()
-        print(f"Loaded {len(sample_docs)} sample documents")
+        logger.info("Loaded %d sample documents", len(sample_docs))
 
         assistant.add_documents(sample_docs)
 
@@ -165,14 +181,14 @@ def main():
                 done = True
             else:
                 result = assistant.invoke(question)
-                print(result)
+                logger.info(result)
 
     except Exception as e:
-        print(f"Error running RAG assistant: {e}")
-        print("Make sure you have set up your .env file with at least one API key:")
-        print("- OPENAI_API_KEY (OpenAI GPT models)")
-        print("- GROQ_API_KEY (Groq Llama models)")
-        print("- GOOGLE_API_KEY (Google Gemini models)")
+        logger.exception("Error running RAG assistant: %s", e)
+        logger.error("Make sure you have set up your .env file with at least one API key:")
+        logger.error("- OPENAI_API_KEY (OpenAI GPT models)")
+        logger.error("- GROQ_API_KEY (Groq Llama models)")
+        logger.error("- GOOGLE_API_KEY (Google Gemini models)")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+rag_env/
+.chroma_db/
+chroma_db/
+*.sqlite3
+*.log
+.env

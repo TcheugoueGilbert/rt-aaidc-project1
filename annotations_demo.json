@@ -1,0 +1,36 @@
+[
+  {
+    "query": "What is MLOps?",
+    "retrieved": [
+      "doc_4",
+      "doc_6",
+      "doc_5"
+    ],
+    "relevant": [
+      "doc_4"
+    ]
+  },
+  {
+    "query": "How to evaluate models?",
+    "retrieved": [
+      "doc_4",
+      "doc_0",
+      "doc_6"
+    ],
+    "relevant": [
+      "doc_4"
+    ]
+  },
+  {
+    "query": "Feature engineering techniques",
+    "retrieved": [
+      "doc_4",
+      "doc_1",
+      "doc_6"
+    ],
+    "relevant": [
+      "doc_4",
+      "doc_1"
+    ]
+  }
+]
