@@ -26,12 +26,7 @@ def load_documents() -> List[str]:
         List of sample documents
     """
     results = []
-    # TODO: Implement document loading
-    # HINT: Read the documents from the data directory
-    # HINT: Return a list of documents
-    # HINT: Your implementation depends on the type of documents you are using (.txt, .pdf, etc.)
-
-    # Your implementation here
+  
     data_dir = os.path.join(os.path.dirname(__file__), "../data")
     for filename in os.listdir(data_dir):
         if filename.endswith(".txt"):
@@ -77,6 +72,11 @@ class RAGAssistant:
             "Answer:"
         )
 
+<<<<<<< HEAD
+=======
+    
+
+>>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
         # Create the chain
         self.chain = self.prompt_template | self.llm | StrOutputParser()
 
@@ -136,6 +136,7 @@ class RAGAssistant:
         Returns:
             Dictionary containing the answer and retrieved context
         """
+<<<<<<< HEAD
         # Retrieve candidates from the vector DB
         results = self.vector_db.search(input, n_results)
         docs = results.get("documents", [])
@@ -154,6 +155,12 @@ class RAGAssistant:
 
         context = "\n\n".join(context_parts)
 
+=======
+        llm_answer = ""
+        
+        context_chunks = self.vector_db.search(input, n_results)
+        context = "\n\n".join(context_chunks)
+>>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
         # Generate answer using the chain
         llm_answer = self.chain.invoke({"context": context, "question": input})
         return llm_answer
