@@ -1,5 +1,5 @@
+
 import os
-<<<<<<< HEAD
 import re
 import chromadb
 import logging
@@ -14,408 +14,308 @@ try:
     from langchain.text_splitter import RecursiveCharacterTextSplitter
 except Exception:
     RecursiveCharacterTextSplitter = None
-=======
-import math
-import logging
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, field
-
-import numpy as np
-from sentence_transformers import SentenceTransformer
-from tqdm import tqdm
-
-import chromadb
-from chromadb.config import Settings
-
-# Local diagram path (per your request)
-DIAGRAM_LOCAL_PATH = "/mnt/data/A_flat-design_digital_illustration_diagram_illustr.png"
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
-
-
-@dataclass
-class VectorDBConfig:
-    collection_name: str = field(default_factory=lambda: os.getenv("CHROMA_COLLECTION_NAME", "rag_documents"))
-    embedding_model_name: str = field(default_factory=lambda: os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"))
-    chroma_db_path: str = "./chroma_db"
-    chunk_size_tokens: int = 150  # approximate words per chunk (not strict tokens)
-    overlap_tokens: int = 30
-    batch_size: int = 64
-    embedding_batch_size: int = 32
-    use_sentence_split: bool = True
-    persist: bool = True  # whether to persist local DB
-    metadata_fields: List[str] = field(default_factory=lambda: ["source", "title", "section"])
-    device: Optional[str] = None  # e.g., "cuda" or "cpu"
->>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
 
 
 class VectorDB:
-    """
-    Enhanced VectorDB wrapper around ChromaDB + SentenceTransformer embeddings.
+    import os
+    import re
+    import logging
+    from typing import List, Dict, Any, Optional
+    import math
+    from sentence_transformers import SentenceTransformer
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    import numpy as np
 
-    Key features:
-    - Sliding-window chunking with overlap to preserve context continuity.
-    - Batching for embeddings and robust error handling.
-    - Metadata-aware storage and filtering.
-    - Query preprocessing hook, hybrid-ish retrieval (embedding + lexical fallback),
-      and reranking by cosine similarity.
-    - Simple retrieval evaluation helpers (Recall@k, MRR).
-    """
+    try:
+        import chromadb
+    except Exception:
+        chromadb = None
 
-<<<<<<< HEAD
-    def __init__(
-        self,
-        collection_name: str = None,
-        embedding_model: str = None,
-        chunk_size: int = None,
-        chunk_overlap: int = None,
-        chunk_strategy: str = None,
-        use_tfidf_rerank: bool = True,
-        rerank_k: int = 50,
-    ):
-        """
-        Initialize the vector database.
+    try:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+    except Exception:
+        RecursiveCharacterTextSplitter = None
 
-        Args:
-            collection_name: Name of the ChromaDB collection
-            embedding_model: HuggingFace model name for embeddings
-        """
-        self.collection_name = collection_name or os.getenv(
-            "CHROMA_COLLECTION_NAME", "rag_documents"
-        )
-        self.embedding_model_name = embedding_model or os.getenv(
-            "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
-        )
-        # Chunking config
-        self.chunk_size = chunk_size or int(os.getenv("CHUNK_SIZE", "500"))
-        self.chunk_overlap = chunk_overlap or int(os.getenv("CHUNK_OVERLAP", "50"))
-        self.chunk_strategy = chunk_strategy or os.getenv("CHUNK_STRATEGY", "simple")
-        # Reranking config
-        self.use_tfidf_rerank = use_tfidf_rerank
-        self.rerank_k = rerank_k
-        # performance / batching
-        self.batch_size = int(os.getenv("EMBED_BATCH_SIZE", "64"))
+    logger = logging.getLogger(__name__)
+    if not logger.handlers:
+        logging.basicConfig(level=logging.INFO)
 
-        # logger
-        self.logger = logging.getLogger(__name__)
-        if not self.logger.handlers:
-            logging.basicConfig(level=logging.INFO)
 
-        # Initialize ChromaDB client
-        self.client = chromadb.PersistentClient(path="./chroma_db")
+    class VectorDB:
+        """A focused, clean VectorDB implementation for this project."""
 
-        # Load embedding model
-        self.logger.info(f"Loading embedding model: {self.embedding_model_name}")
-        self.embedding_model = SentenceTransformer(self.embedding_model_name)
-=======
-    def __init__(self, config: VectorDBConfig = None):
-        self.config = config or VectorDBConfig()
-        logger.info(f"Initializing VectorDB with collection: {self.config.collection_name}")
+        def __init__(
+            self,
+            collection_name: str = None,
+            embedding_model: str = None,
+            chunk_size: int = None,
+            chunk_overlap: int = None,
+            chunk_strategy: str = None,
+            use_tfidf_rerank: bool = True,
+            rerank_k: int = 50,
+        ):
+            self.collection_name = collection_name or os.getenv("CHROMA_COLLECTION_NAME", "rag_documents")
+            self.embedding_model_name = embedding_model or os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+            self.chunk_size = chunk_size or int(os.getenv("CHUNK_SIZE", "500"))
+            self.chunk_overlap = chunk_overlap or int(os.getenv("CHUNK_OVERLAP", "50"))
+            self.chunk_strategy = chunk_strategy or os.getenv("CHUNK_STRATEGY", "simple")
+            self.use_tfidf_rerank = use_tfidf_rerank
+            self.rerank_k = rerank_k
+            self.batch_size = int(os.getenv("EMBED_BATCH_SIZE", "64"))
 
-        # Initialize ChromaDB client (persistent)
-        settings = Settings(chroma_db_impl="duckdb+parquet", persist_directory=self.config.chroma_db_path)
-        self.client = chromadb.Client(settings)
+            if chromadb is not None:
+                try:
+                    self.client = chromadb.PersistentClient(path="./chroma_db")
+                    self.collection = self.client.get_or_create_collection(name=self.collection_name, metadata={"description": "RAG document collection"})
+                except Exception:
+                    self.client = None
+                    self.collection = None
+            else:
+                self.client = None
+                self.collection = None
 
-        # Load embedding model
-        logger.info(f"Loading embedding model: {self.config.embedding_model_name}")
-        model_kwargs = {}
-        if self.config.device:
-            model_kwargs["device"] = self.config.device
-        self.embedder = SentenceTransformer(self.config.embedding_model_name, **model_kwargs)
->>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
+            logger.info("Loading embedding model: %s", self.embedding_model_name)
+            self.embedding_model = SentenceTransformer(self.embedding_model_name)
+            logger.info("Vector database initialized with collection: %s", self.collection_name)
 
-        # Get or create collection
-        self.collection = self.client.get_or_create_collection(
-            name=self.config.collection_name,
-            metadata={"description": "RAG document collection"},
-        )
-        logger.info("VectorDB initialized.")
+        def _clean_text(self, text: str) -> str:
+            return re.sub(r"\s+", " ", text.strip())
 
-<<<<<<< HEAD
-        self.logger.info(f"Vector database initialized with collection: {self.collection_name}")
+        def _split_into_sentences(self, text: str) -> List[str]:
+            text = self._clean_text(text)
+            sentences = re.split(r'(?<=[\.\!?])\s+|\n+', text)
+            return [s.strip() for s in sentences if s.strip()]
 
-    def _clean_text(self, text: str) -> str:
-        return re.sub(r"\s+", " ", text.strip())
+        def chunk_text(self, text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None) -> List[str]:
+            text = self._clean_text(text)
+            cs = chunk_size or self.chunk_size
+            ov = overlap or self.chunk_overlap
 
-    def _split_into_sentences(self, text: str) -> List[str]:
-        # basic sentence splitter that keeps punctuation
-        # splits on (?<=[.!?]) + space(s) or newline boundaries
-        text = self._clean_text(text)
-        sentences = re.split(r'(?<=[\.!?])\s+|\n+', text)
-        sentences = [s.strip() for s in sentences if s.strip()]
-        return sentences
+            if self.chunk_strategy == "recursive" and RecursiveCharacterTextSplitter is not None:
+                splitter = RecursiveCharacterTextSplitter(chunk_size=cs, chunk_overlap=ov, separators=["\n\n", "\n", " "])
+                return splitter.split_text(text)
 
-    def chunk_text(self, text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None) -> List[str]:
-        """Create chunks using one of several strategies.
+            if self.chunk_strategy == "sentence":
+                sentences = self._split_into_sentences(text)
+                if not sentences:
+                    return []
+                chunks = []
+                i = 0
+                while i < len(sentences):
+                    j = i + 1
+                    while j < len(sentences) and len(" ".join(sentences[i:j+1])) <= cs:
+                        j += 1
+                    chunk = " ".join(sentences[i:j])
+                    chunks.append(chunk)
+                    if j >= len(sentences):
+                        break
+                    step = max(1, (j - i) - max(1, ov))
+                    i = i + step
+                return chunks
 
-        Strategies:
-          - "simple": approximate char-based chunks (word aware)
-          - "sentence": group full sentences up to chunk_size characters
-          - "recursive": use LangChain's RecursiveCharacterTextSplitter when available
-
-        Overlap is interpreted as number of characters (for simple) or number of sentences (for sentence strategy).
-        """
-        text = self._clean_text(text)
-        cs = chunk_size or self.chunk_size
-        ov = overlap or self.chunk_overlap
-
-        if self.chunk_strategy == "recursive" and RecursiveCharacterTextSplitter is not None:
-            splitter = RecursiveCharacterTextSplitter(
-                chunk_size=cs, chunk_overlap=ov, separators=["\n\n", "\n", " "]
-            )
-            return splitter.split_text(text)
-
-        if self.chunk_strategy == "sentence":
-            sentences = self._split_into_sentences(text)
-            if not sentences:
+            words = text.split()
+            if not words:
                 return []
             chunks = []
-            i = 0
-            # overlap measured in sentences
-            while i < len(sentences):
-                cur = sentences[i]
-                j = i + 1
-                while j < len(sentences) and len(" ".join(sentences[i:j+1])) <= cs:
-                    j += 1
-                chunk = " ".join(sentences[i:j])
-                chunks.append(chunk)
-                if j >= len(sentences):
-                    break
-                # move start by window size minus overlap (sentences)
-                step = max(1, (j - i) - max(1, ov))
-                i = i + step
-            return chunks
-
-        # default: simple char-aware word grouping with approximate overlap
-        words = text.split()
-        if not words:
-            return []
-        chunks = []
-        cur_words = []
-        cur_len = 0
-        for w in words:
-            # +1 for space
-            if cur_len + len(w) + 1 > cs and cur_words:
+            cur_words = []
+            cur_len = 0
+            for w in words:
+                if cur_len + len(w) + 1 > cs and cur_words:
+                    chunks.append(" ".join(cur_words))
+                    overlap_chars = ov
+                    keep = 0
+                    accum = 0
+                    for t in reversed(cur_words):
+                        accum += len(t) + 1
+                        keep += 1
+                        if accum >= overlap_chars:
+                            break
+                    cur_words = cur_words[-keep:] if keep > 0 else []
+                    cur_len = sum(len(t) + 1 for t in cur_words)
+                cur_words.append(w)
+                cur_len += len(w) + 1
+            if cur_words:
                 chunks.append(" ".join(cur_words))
-                # compute overlap in words approximated from overlap chars
-                overlap_chars = ov
-                # approximate words to keep for overlap
-                keep = 0
-                accum = 0
-                for t in reversed(cur_words):
-                    accum += len(t) + 1
-                    keep += 1
-                    if accum >= overlap_chars:
-                        break
-                # start new window with last `keep` words
-                cur_words = cur_words[-keep:] if keep > 0 else []
-                cur_len = sum(len(t) + 1 for t in cur_words)
-            cur_words.append(w)
-            cur_len += len(w) + 1
-        if cur_words:
-            chunks.append(" ".join(cur_words))
-=======
-    # -----------------------------
-    # Chunking utilities
-    # -----------------------------
-    def _sentence_split(self, text: str) -> List[str]:
-        # Basic sentence splitter using punctuation. Replace with spaCy or nltk for better results.
-        import re
-        sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if s.strip()]
-        return sentences
-
-    def chunk_text(self, text: str, chunk_size: Optional[int] = None, overlap: Optional[int] = None) -> List[str]:
-        """
-        Chunk text using a sliding window over sentences or words.
-
-        Args:
-            text: full document string.
-            chunk_size: approx number of words per chunk (defaults to config).
-            overlap: approx number of words overlap (defaults to config).
-
-        Returns:
-            List[str]: text chunks
-        """
-        chunk_size = chunk_size or self.config.chunk_size_tokens
-        overlap = overlap if overlap is not None else self.config.overlap_tokens
-
-        if self.config.use_sentence_split:
-            units = self._sentence_split(text)
-        else:
-            units = text.split()
-
-        # Convert units list into rolling windows measured in units length
-        chunks = []
-        if not units:
             return chunks
 
-        # If units are sentences, approximate by word count per sentence
-        if self.config.use_sentence_split:
-            # Convert sentences to words counts to manage chunk sizes approximately
-            sentence_word_counts = [len(s.split()) for s in units]
-            start_idx = 0
-            while start_idx < len(units):
-                # accumulate sentences until reaching chunk_size approx
-                total_words = 0
-                end_idx = start_idx
-                while end_idx < len(units) and total_words + sentence_word_counts[end_idx] <= chunk_size:
-                    total_words += sentence_word_counts[end_idx]
-                    end_idx += 1
-                if end_idx == start_idx:  # if single sentence larger than chunk_size
-                    end_idx = start_idx + 1
-                chunk_text = " ".join(units[start_idx:end_idx])
-                chunks.append(chunk_text)
-                # move window
-                # compute approximate overlap in sentences
-                overlap_words = overlap
-                # move start to keep `overlap_words` worth of words
-                # naive approach: move back by sentences until overlap
-                if end_idx >= len(units):
-                    break
-                # determine next start by backing off sentences
-                sent_back = 0
-                back_words = 0
-                i = end_idx - 1
-                while i >= 0 and back_words < overlap_words:
-                    back_words += sentence_word_counts[i]
-                    i -= 1
-                    sent_back += 1
-                start_idx = max(0, end_idx - sent_back)
-        else:
-            # word-level sliding window
-            words = units
-            start = 0
-            while start < len(words):
-                end = min(len(words), start + chunk_size)
-                chunk = " ".join(words[start:end])
-                chunks.append(chunk)
-                if end == len(words):
-                    break
-                start = max(0, end - overlap)
+        def add_documents(self, documents: List) -> None:
+            logger.info("Processing %d documents...", len(documents))
+            all_chunks = []
+            all_metadatas = []
+            all_ids = []
+            doc_counter = 0
+            chunk_counter = 0
 
->>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
-        return chunks
-
-    # -----------------------------
-    # Document ingestion
-    # -----------------------------
-    def _make_doc_id(self, doc_idx: int, chunk_idx: int, prefix: Optional[str] = None) -> str:
-        prefix_str = f"{prefix}_" if prefix else ""
-        return f"{prefix_str}doc_{doc_idx}_chunk_{chunk_idx}"
-
-    def add_documents(self, documents: List[Dict[str, Any]], prefix: Optional[str] = None, overwrite: bool = False) -> Dict[str, int]:
-        """
-        Ingest documents into ChromaDB.
-
-<<<<<<< HEAD
-        self.logger.info("Processing %d documents...", len(documents))
-        all_chunks = []
-=======
-        documents: list of dicts:
-            {
-              "id": optional unique id,
-              "text": "full document text",
-              "metadata": {"source": ..., "title": ..., ...}
-            }
-
-        Returns: summary dict with counts added
-        """
-        if not isinstance(documents, list) or not documents:
-            raise ValueError("documents must be a non-empty list of dicts with 'text' and optional 'metadata' keys")
-
-        all_texts = []
->>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
-        all_metadatas = []
-        all_ids = []
-
-        doc_counter = 0
-        chunk_counter = 0
-
-        for doc_idx, doc in enumerate(documents):
-<<<<<<< HEAD
-            # support dicts with content + metadata or raw strings
-            if isinstance(doc, dict):
-                content = doc.get("content") or doc.get("text") or ""
-                meta = doc.get("metadata") or {}
-            else:
-                content = str(doc)
-                meta = {}
-
-            chunks = self.chunk_text(content)
-            for chunk_idx, chunk in enumerate(chunks):
-                all_chunks.append(chunk)
-                m = {"doc_index": doc_idx, "chunk_index": chunk_idx}
-                m.update(meta)
-                all_metadatas.append(m)
-                all_ids.append(f"doc_{doc_idx}_chunk_{chunk_idx}")
-                chunk_counter += 1
-            doc_counter += 1
-
-        if not all_chunks:
-            self.logger.warning("No chunks to add.")
-            return
-
-        # Compute embeddings in batches and add in batches to ChromaDB to reduce memory usage
-        total = len(all_chunks)
-        self.logger.info("Encoding and adding %d chunks in batches (batch_size=%d)", total, self.batch_size)
-        start = 0
-        while start < total:
-            end = min(start + self.batch_size, total)
-            batch_chunks = all_chunks[start:end]
-            batch_emb = self.embedding_model.encode(batch_chunks, show_progress_bar=False)
-            batch_meta = all_metadatas[start:end]
-            batch_ids = all_ids[start:end]
-            try:
-                self.collection.add(
-                    embeddings=batch_emb,
-                    documents=batch_chunks,
-                    metadatas=batch_meta,
-                    ids=batch_ids,
-                )
-            except Exception as e:
-                self.logger.exception("Failed to add batch to collection: %s", e)
-                raise
-            start = end
-
-        self.logger.info("Added %d chunks from %d documents to vector database", chunk_counter, doc_counter)
-
-    def _normalize_query(self, query: str) -> str:
-        q = query.lower()
-        q = re.sub(r"[^\w\s]", " ", q)
-        q = re.sub(r"\s+", " ", q).strip()
-        return q
-
-    def _expand_query(self, query: str, top_k: int = 5) -> str:
-        # lightweight expansion: append top TF-IDF keywords from the full collection
-        try:
-            data = self.collection.get(include=["documents"]) or {}
-            docs = data.get("documents", [])
-            flat = []
-            for d in docs:
-                if isinstance(d, list):
-                    flat.extend(d)
+            for doc_idx, doc in enumerate(documents):
+                if isinstance(doc, dict):
+                    content = doc.get("content") or doc.get("text") or ""
+                    meta = doc.get("metadata") or {}
                 else:
-                    flat.append(d)
-            if not flat:
-                return query
-            vectorizer = TfidfVectorizer(stop_words="english", max_features=20000)
-            X = vectorizer.fit_transform(flat)
-            # score query terms against corpus to find salient terms
-            tfidf_vocab = vectorizer.get_feature_names_out()
-            # pick top terms globally by idf
-            idf_scores = vectorizer.idf_
-            top_idx = np.argsort(idf_scores)[-top_k:]
-            top_terms = [tfidf_vocab[i] for i in top_idx]
-            return query + " " + " ".join(top_terms)
-        except Exception:
-            return query
+                    content = str(doc)
+                    meta = {}
 
-    def search(self, query: str, n_results: int = 5, metadata_filter: Optional[Dict[str,Any]] = None, expand_query: bool = False) -> Dict[str, Any]:
-=======
-            text = doc.get("text") or doc.get("content")
-            if not text or not text.strip():
-                logger.warning(f"Skipping empty document at index {doc_idx}")
+                chunks = self.chunk_text(content)
+                for chunk_idx, chunk in enumerate(chunks):
+                    all_chunks.append(chunk)
+                    m = {"doc_index": doc_idx, "chunk_index": chunk_idx}
+                    m.update(meta)
+                    all_metadatas.append(m)
+                    all_ids.append(f"doc_{doc_idx}_chunk_{chunk_idx}")
+                    chunk_counter += 1
+                doc_counter += 1
+
+            if not all_chunks:
+                logger.warning("No chunks to add.")
+                return
+
+            embeddings = self.embedding_model.encode(all_chunks, show_progress_bar=True)
+
+            if self.collection is not None:
+                self.collection.add(
+                    embeddings=embeddings,
+                    documents=all_chunks,
+                    metadatas=all_metadatas,
+                    ids=all_ids,
+                )
+                logger.info("Added %d chunks from %d documents to vector database", chunk_counter, doc_counter)
+            else:
+                logger.warning("ChromaDB collection not initialized; skipping add.")
+
+        def _normalize_query(self, query: str) -> str:
+            q = query.lower()
+            q = re.sub(r"[^\\w\\s]", " ", q)
+            q = re.sub(r"\\s+", " ", q).strip()
+            return q
+
+        def _expand_query(self, query: str, top_k: int = 5) -> str:
+            try:
+                if self.collection is None:
+                    return query
+                data = self.collection.get(include=["documents"]) or {}
+                docs = data.get("documents", [])
+                flat = []
+                for d in docs:
+                    if isinstance(d, list):
+                        flat.extend(d)
+                    else:
+                        flat.append(d)
+                if not flat:
+                    return query
+                vectorizer = TfidfVectorizer(stop_words="english", max_features=20000)
+                X = vectorizer.fit_transform(flat)
+                tfidf_vocab = vectorizer.get_feature_names_out()
+                idf_scores = vectorizer.idf_
+                top_idx = np.argsort(idf_scores)[-top_k:]
+                top_terms = [tfidf_vocab[i] for i in top_idx]
+                return query + " " + " ".join(top_terms)
+            except Exception:
+                return query
+
+        def search(self, query: str, n_results: int = 5, metadata_filter: Optional[Dict[str,Any]] = None, expand_query: bool = False) -> Dict[str, Any]:
+            qnorm = self._normalize_query(query)
+            if expand_query:
+                qnorm = self._expand_query(qnorm)
+
+            query_embedding = self.embedding_model.encode([qnorm])[0]
+            candidate_k = max(n_results, self.rerank_k if self.use_tfidf_rerank else n_results)
+
+            if self.collection is None:
+                return {"documents": [], "metadatas": [], "distances": [], "ids": []}
+
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=candidate_k,
+                include=["documents", "metadatas", "distances"],
+            )
+            if not results or not results.get("documents"):
+                return {"documents": [], "metadatas": [], "distances": [], "ids": []}
+            docs = results.get("documents", [[]])[0]
+            metas = results.get("metadatas", [[]])[0]
+            dists = results.get("distances", [[]])[0]
+            ids = results.get("ids", [[]])[0] if "ids" in results else []
+
+            if metadata_filter:
+                filtered_docs, filtered_metas, filtered_dists, filtered_ids = [], [], [], []
+                for doc, meta, dist, id_ in zip(docs, metas, dists, ids):
+                    ok = True
+                    if isinstance(meta, dict):
+                        for k, v in metadata_filter.items():
+                            if meta.get(k) != v:
+                                ok = False
+                                break
+                    if ok:
+                        filtered_docs.append(doc)
+                        filtered_metas.append(meta)
+                        filtered_dists.append(dist)
+                        filtered_ids.append(id_)
+                docs, metas, dists, ids = filtered_docs, filtered_metas, filtered_dists, filtered_ids
+
+            if self.use_tfidf_rerank and docs:
+                try:
+                    vectorizer = TfidfVectorizer(stop_words="english")
+                    tfidf_docs = vectorizer.fit_transform(docs)
+                    tfidf_query = vectorizer.transform([query])
+                    sims = cosine_similarity(tfidf_query, tfidf_docs)[0]
+                    order = sims.argsort()[::-1]
+                    top_idx = order[:n_results]
+                    docs = [docs[i] for i in top_idx]
+                    metas = [metas[i] for i in top_idx]
+                    dists = [dists[i] for i in top_idx]
+                    ids = [ids[i] for i in top_idx]
+                except Exception:
+                    docs = docs[:n_results]
+                    metas = metas[:n_results]
+                    dists = dists[:n_results]
+                    ids = ids[:n_results]
+            else:
+                docs = docs[:n_results]
+                metas = metas[:n_results]
+                dists = dists[:n_results]
+                ids = ids[:n_results]
+
+            return {"documents": docs, "metadatas": metas, "distances": dists, "ids": ids}
+
+        def evaluate_retrieval(self, queries: List[Dict[str, Any]], k: int = 10, expand_query: bool = False) -> Dict[str, float]:
+            precisions, recalls, mrrs, ndcgs = [], [], [], []
+            for q in queries:
+                query_text = q.get("query")
+                relevant = set(q.get("relevant_ids", []))
+                if not query_text or not relevant:
+                    continue
+                res = self.search(query_text, n_results=k, expand_query=expand_query)
+                retrieved_ids = res.get("ids", [])
+                hit_set = [1 if rid in relevant else 0 for rid in retrieved_ids]
+                precision = sum(hit_set) / float(k)
+                recall = sum(hit_set) / float(len(relevant)) if relevant else 0.0
+                rr = 0.0
+                for idx, val in enumerate(hit_set, start=1):
+                    if val:
+                        rr = 1.0 / idx
+                        break
+                dcg = sum((2 ** rel - 1) / math.log2(i + 1) for i, rel in enumerate(hit_set, start=1))
+                ideal_rels = [1] * min(len(relevant), k)
+                idcg = sum((2 ** rel - 1) / math.log2(i + 1) for i, rel in enumerate(ideal_rels, start=1))
+                ndcg = dcg / idcg if idcg > 0 else 0.0
+                precisions.append(precision)
+                recalls.append(recall)
+                mrrs.append(rr)
+                ndcgs.append(ndcg)
+
+            def _mean(xs):
+                return float(np.mean(xs)) if xs else 0.0
+
+            return {"precision@k": _mean(precisions), "recall@k": _mean(recalls), "mrr": _mean(mrrs), "ndcg@k": _mean(ndcgs)}
+                    ndcg = dcg / idcg if idcg > 0 else 0.0
+                    precisions.append(precision)
+                    recalls.append(recall)
+                    mrrs.append(rr)
+                    ndcgs.append(ndcg)
+
+                def _mean(xs):
+                    return float(np.mean(xs)) if xs else 0.0
+
+                return {"precision@k": _mean(precisions), "recall@k": _mean(recalls), "mrr": _mean(mrrs), "ndcg@k": _mean(ndcgs)}
                 continue
             metadata = doc.get("metadata", {}) or {}
             # Add also provided id if present to metadata

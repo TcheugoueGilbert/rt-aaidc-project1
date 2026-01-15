@@ -71,12 +71,7 @@ class RAGAssistant:
             "Question: {question}\n"
             "Answer:"
         )
-
-<<<<<<< HEAD
-=======
-    
-
->>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
+        
         # Create the chain
         self.chain = self.prompt_template | self.llm | StrOutputParser()
 
@@ -136,7 +131,6 @@ class RAGAssistant:
         Returns:
             Dictionary containing the answer and retrieved context
         """
-<<<<<<< HEAD
         # Retrieve candidates from the vector DB
         results = self.vector_db.search(input, n_results)
         docs = results.get("documents", [])
@@ -154,13 +148,6 @@ class RAGAssistant:
             context_parts.append(f"{provenance}\n{doc}")
 
         context = "\n\n".join(context_parts)
-
-=======
-        llm_answer = ""
-        
-        context_chunks = self.vector_db.search(input, n_results)
-        context = "\n\n".join(context_chunks)
->>>>>>> ecd9bfc13ced73e07025e5b59a16bbbb23293c02
         # Generate answer using the chain
         llm_answer = self.chain.invoke({"context": context, "question": input})
         return llm_answer
