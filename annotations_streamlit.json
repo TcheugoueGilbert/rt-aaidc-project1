@@ -2,32 +2,40 @@
   {
     "query": "What is MLOps?",
     "retrieved": [
-      "doc_4",
-      "doc_6"
+      "doc_4_chunk_5",
+      "doc_4_chunk_2",
+      "doc_3_chunk_7"
     ],
     "relevant": [
-      "doc_4"
+      "doc_4_chunk_5",
+      "doc_4_chunk_2",
+      "doc_3_chunk_7"
     ]
   },
   {
     "query": "How to evaluate models?",
     "retrieved": [
-      "doc_4",
-      "doc_0"
+      "doc_4_chunk_6",
+      "doc_4_chunk_5",
+      "doc_4_chunk_3"
     ],
     "relevant": [
-      "doc_4"
+      "doc_4_chunk_6",
+      "doc_4_chunk_5",
+      "doc_4_chunk_3"
     ]
   },
   {
     "query": "Feature engineering techniques",
     "retrieved": [
-      "doc_4",
-      "doc_1"
+      "doc_4_chunk_0",
+      "doc_4_chunk_1",
+      "doc_1_chunk_5"
     ],
     "relevant": [
-      "doc_4",
-      "doc_1"
+      "doc_4_chunk_0",
+      "doc_4_chunk_1",
+      "doc_1_chunk_5"
     ]
   }
 ]
