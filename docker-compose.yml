@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  labeler:
+    build: .
+    container_name: rag_labeler
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - STREAMLIT_SERVER_PORT=8501
+    volumes:
+      - .:/app
+    command: ["python", "-m", "streamlit", "run", "src/label_app.py", "--server.port=8501", "--server.runOnSave=true"]
+    restart: unless-stopped

@@ -49,7 +49,7 @@ How to run locally:
 - Run the smoke test:
 
   ```powershell
-  python -m src.smoke_test
+  python src\smoke_test.py
   ```
 
 - Run the evaluation script (quick example):
@@ -58,9 +58,3 @@ How to run locally:
   python scripts/run_eval.py
   ```
 
-If you want, I can:
-- Add a `pyproject.toml` and make the package importable as a module.
-- Add GitHub Actions CI and a simple Kubernetes manifest.
-- Add unit tests and a small benchmark harness for chunking/embedding throughput.
-
-Which of these should I do next?
