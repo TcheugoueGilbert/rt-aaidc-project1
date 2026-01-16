@@ -107,3 +107,21 @@ def load_documents_from_dir(data_dir: str) -> List[Dict[str, Any]]:
             docs.append({"content": content, "metadata": {"source": p.name}})
 
     return docs
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Load documents from a directory and print a summary")
+    parser.add_argument("--dir", "-d", default=str(Path(__file__).resolve().parents[1] / "data"), help="Directory to load documents from")
+    parser.add_argument("--verbose", "-v", action="store_true", help="Print document snippets")
+    args = parser.parse_args()
+
+    loaded = load_documents_from_dir(args.dir)
+    print(f"[loader] Loaded {len(loaded)} documents from {args.dir}")
+    if args.verbose and loaded:
+        for i, doc in enumerate(loaded, 1):
+            src = doc.get("metadata", {}).get("source", "<unknown>")
+            snippet = doc.get("content", "")[:400].replace("\n", " ")
+            print(f"\n[{i}] {src} — {len(doc.get('content',''))} chars")
+            print(snippet)

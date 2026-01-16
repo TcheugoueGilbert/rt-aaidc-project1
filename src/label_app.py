@@ -65,6 +65,35 @@ def run_app():
     # use loader to support multiple file formats
     from loader import load_documents_from_dir
 
+    # Ensure data dir exists and allow users to upload files
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    uploaded = st.sidebar.file_uploader(
+        "Upload files", type=["txt", "pdf", "docx", "csv", "xls", "xlsx"], accept_multiple_files=True
+    )
+    if uploaded:
+        for f in uploaded:
+            try:
+                target = DATA_DIR / f.name
+                # avoid overwriting existing files
+                if target.exists():
+                    base = target.stem
+                    suf = target.suffix
+                    i = 1
+                    while True:
+                        candidate = DATA_DIR / f"{base}_{i}{suf}"
+                        if not candidate.exists():
+                            target = candidate
+                            break
+                        i += 1
+
+                data = f.read()
+                with open(target, "wb") as out:
+                    out.write(data)
+                st.sidebar.success(f"Saved {f.name} -> data/{target.name}")
+            except Exception as e:
+                st.sidebar.error(f"Failed to save {f.name}: {e}")
+
     docs = load_documents_from_dir(DATA_DIR)
     st.sidebar.write(f"Loaded {len(docs)} documents from data/")
 
