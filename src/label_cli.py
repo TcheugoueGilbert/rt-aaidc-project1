@@ -77,7 +77,10 @@ def main(argv: List[str] = None):
     parser.add_argument("--queries-file", type=str, default=None)
     args = parser.parse_args(argv)
 
-    docs = load_texts(DATA_DIR)
+    # use loader that supports many file types
+    from loader import load_documents_from_dir
+
+    docs = load_documents_from_dir(DATA_DIR)
     if not docs:
         print("No documents found in data/. Add some .txt files first.")
         return 2

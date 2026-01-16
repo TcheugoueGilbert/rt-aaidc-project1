@@ -47,7 +47,9 @@ def _print_header(title: str):
 
 def run_smoke_test(assertions: bool = True) -> int:
     _print_header("SMOKE TEST: load docs")
-    docs = load_text_files(DATA_DIR)
+        from loader import load_documents_from_dir
+        # prefer loader that supports multiple formats
+        docs = load_documents_from_dir(DATA_DIR)
     print(f"Loaded {len(docs)} docs from {DATA_DIR}")
 
     failures = []

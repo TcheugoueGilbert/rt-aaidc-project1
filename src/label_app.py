@@ -62,7 +62,10 @@ def run_app():
     st.title("RAG Retrieval Labeler")
     st.write("Annotate retrieval results and compute metrics")
 
-    docs = load_texts(DATA_DIR)
+    # use loader to support multiple file formats
+    from loader import load_documents_from_dir
+
+    docs = load_documents_from_dir(DATA_DIR)
     st.sidebar.write(f"Loaded {len(docs)} documents from data/")
 
     default_queries = [
